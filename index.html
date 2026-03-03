@@ -1,1 +1,213 @@
-迷路
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maze Extreme</title>
+<style>
+body{
+    margin:0;
+    background:linear-gradient(135deg,#0f0f0f,#1a1a2e,#16213e);
+    color:white;
+    font-family:sans-serif;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+}
+h1{margin:10px;}
+#info{
+    display:flex;
+    gap:20px;
+    font-weight:bold;
+}
+#maze{
+    display:grid;
+    gap:2px;
+    margin:15px 0;
+}
+.cell{
+    width:28px;
+    height:28px;
+    border-radius:5px;
+}
+.wall{background:#111;}
+.path{background:#444;}
+.player{background:#00ffcc;}
+.enemy{background:#ff3c3c;}
+.enemy2{background:#ff8800;}
+.goal{background:gold;}
+.trap{background:purple;}
+.dark{background:#000;}
+.controls{
+    display:grid;
+    grid-template-columns:repeat(3,60px);
+    gap:10px;
+}
+button{
+    height:60px;
+    font-size:20px;
+    border:none;
+    border-radius:15px;
+    background:#00ffcc;
+    font-weight:bold;
+}
+button:active{transform:scale(0.9);}
+.empty{visibility:hidden;}
+</style>
+</head>
+<body>
+
+<h1>迷路エクストリーム</h1>
+<div id="info">
+<div>❤️ <span id="life">3</span></div>
+<div>⏱ <span id="timer">30</span></div>
+<div>STAGE <span id="stage">1</span></div>
+</div>
+
+<div id="maze"></div>
+
+<div class="controls">
+<div class="empty"></div>
+<button onclick="move(0,-1)">↑</button>
+<div class="empty"></div>
+<button onclick="move(-1,0)">←</button>
+<div class="empty"></div>
+<button onclick="move(1,0)">→</button>
+<div class="empty"></div>
+<button onclick="move(0,1)">↓</button>
+<div class="empty"></div>
+</div>
+
+<script>
+const mazeData = [
+[1,1,1,1,1,1,1,1,1,1],
+[1,0,0,0,1,0,0,0,0,1],
+[1,0,1,0,1,0,1,1,0,1],
+[1,0,1,0,0,0,1,0,0,1],
+[1,0,1,1,1,0,1,0,1,1],
+[1,0,0,0,1,0,1,0,0,1],
+[1,1,1,0,1,0,1,1,0,1],
+[1,0,0,0,0,0,0,1,0,1],
+[1,0,1,1,1,1,0,0,0,1],
+[1,1,1,1,1,1,1,1,1,1]
+];
+
+let player,enemy1,enemy2,goal;
+let life=3;
+let stage=1;
+let time=30;
+let enemyInterval,timerInterval;
+
+const maze=document.getElementById("maze");
+const lifeEl=document.getElementById("life");
+const stageEl=document.getElementById("stage");
+const timerEl=document.getElementById("timer");
+
+function startGame(){
+    player={x:1,y:1};
+    enemy1={x:8,y:1};
+    enemy2={x:1,y:8};
+    goal={x:8,y:8};
+    time=30-stage*2;
+    if(time<10) time=10;
+    stageEl.textContent=stage;
+    lifeEl.textContent=life;
+    timerEl.textContent=time;
+    clearInterval(enemyInterval);
+    clearInterval(timerInterval);
+    enemyInterval=setInterval(moveEnemies,600-stage*80);
+    timerInterval=setInterval(()=>{
+        time--;
+        timerEl.textContent=time;
+        if(time<=0) gameOver();
+    },1000);
+    draw();
+}
+
+function draw(){
+    maze.innerHTML="";
+    maze.style.gridTemplateColumns="repeat(10,28px)";
+    for(let y=0;y<10;y++){
+        for(let x=0;x<10;x++){
+            const cell=document.createElement("div");
+            cell.classList.add("cell");
+            if(Math.abs(player.x-x)<=2 && Math.abs(player.y-y)<=2){
+                if(mazeData[y][x]===1) cell.classList.add("wall");
+                else cell.classList.add("path");
+                if(x===player.x&&y===player.y) cell.classList.add("player");
+                if(x===enemy1.x&&y===enemy1.y) cell.classList.add("enemy");
+                if(x===enemy2.x&&y===enemy2.y) cell.classList.add("enemy2");
+                if(x===goal.x&&y===goal.y) cell.classList.add("goal");
+                if((x===4&&y===4)||(x===5&&y===6)) cell.classList.add("trap");
+            }else{
+                cell.classList.add("dark");
+            }
+            maze.appendChild(cell);
+        }
+    }
+}
+
+function move(dx,dy){
+    const nx=player.x+dx;
+    const ny=player.y+dy;
+    if(mazeData[ny][nx]===0){
+        player.x=nx;
+        player.y=ny;
+        if((nx===4&&ny===4)||(nx===5&&ny===6)){
+            life--;
+            lifeEl.textContent=life;
+        }
+        if(player.x===goal.x&&player.y===goal.y){
+            stage++;
+            alert("ステージクリア！");
+            startGame();
+        }
+        checkCollision();
+        draw();
+    }
+}
+
+function moveEnemies(){
+    [enemy1,enemy2].forEach(e=>{
+        const dx=player.x-e.x;
+        const dy=player.y-e.y;
+        let mx=Math.abs(dx)>Math.abs(dy)?Math.sign(dx):0;
+        let my=Math.abs(dy)>=Math.abs(dx)?Math.sign(dy):0;
+        if(mazeData[e.y+my]?.[e.x+mx]===0){
+            e.x+=mx;
+            e.y+=my;
+        }
+    });
+    checkCollision();
+    draw();
+}
+
+function checkCollision(){
+    if((player.x===enemy1.x&&player.y===enemy1.y)||
+       (player.x===enemy2.x&&player.y===enemy2.y)){
+        life--;
+        lifeEl.textContent=life;
+        if(life<=0) gameOver();
+        else startGame();
+    }
+}
+
+function gameOver(){
+    alert("💀 ゲームオーバー");
+    life=3;
+    stage=1;
+    startGame();
+}
+
+document.addEventListener("keydown",(e)=>{
+    if(e.key==="ArrowUp")move(0,-1);
+    if(e.key==="ArrowDown")move(0,1);
+    if(e.key==="ArrowLeft")move(-1,0);
+    if(e.key==="ArrowRight")move(1,0);
+});
+
+startGame();
+</script>
+
+</body>
+</html>
